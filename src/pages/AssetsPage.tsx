@@ -1,4 +1,4 @@
-import { Wallet, CreditCard, PiggyBank, Landmark, Plus } from 'lucide-react'
+import { PiggyBank, Landmark, Plus } from 'lucide-react'
 
 export default function AssetsPage() {
   return (

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, addMonths, subMonths } from 'date-fns'
-import { Plus, ChevronLeft, ChevronRight, Copy, Move, X, MapPin, Clock, Bell, Trash2, Edit2 } from 'lucide-react'
+import { Plus, ChevronLeft, ChevronRight, Copy, Move, Bell, Trash2, Repeat } from 'lucide-react'
 import { DndContext, useDraggable, useDroppable, DragOverlay, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 
@@ -111,8 +111,12 @@ const DroppableCell = ({ day, isCurrentMonth, isTodayDate, transactions, onItemC
   )
 }
 
-const EventDetailPopover = ({ item, position, onClose }: { item: Transaction, position: { x: number, y: number }, onClose: () => void }) => {
+// ---- Popover Component (상세 정보 카드) ----
+const EventDetailPopover = ({ item, targetRect, onClose }: { item: Transaction, targetRect: DOMRect, onClose: () => void }) => {
     const popoverRef = useRef<HTMLDivElement>(null)
+    const [style, setStyle] = useState<React.CSSProperties>({ opacity: 0 })
+    const [arrowStyle, setArrowStyle] = useState<React.CSSProperties>({})
+    const [arrowClass, setArrowClass] = useState("")
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -124,35 +128,190 @@ const EventDetailPopover = ({ item, position, onClose }: { item: Transaction, po
         return () => document.removeEventListener('mousedown', handleClickOutside)
     }, [onClose])
 
-    const style: React.CSSProperties = {
-        position: 'fixed',
-        left: position.x + 10,
-        top: position.y,
-        zIndex: 100,
-        width: '300px'
-    }
-    
-    // 안전하게 window 체크
-    if (typeof window !== 'undefined') {
-        if (window.innerWidth - position.x < 320) style.left = position.x - 310
-        if (window.innerHeight - position.y < 200) style.top = position.y - 150
-    }
+    useEffect(() => {
+        if (!popoverRef.current) return
+
+        const popoverWidth = 320
+        const popoverHeight = popoverRef.current.offsetHeight || 300 // Approximation if not rendered yet
+        const gap = 12 // Space between target and popover
+        const viewportWidth = window.innerWidth
+        const viewportHeight = window.innerHeight
+
+        let left = 0
+        let top = 0
+        let newArrowClass = ""
+        let newArrowStyle: React.CSSProperties = {}
+
+        // 1. Horizontal Positioning
+        // Try Right side first
+        if (targetRect.right + gap + popoverWidth <= viewportWidth - 10) {
+            left = targetRect.right + gap
+            newArrowClass = "border-r-[#2c2c2e]/95 left-[-8px]"
+        } 
+        // Try Left side
+        else if (targetRect.left - gap - popoverWidth >= 10) {
+            left = targetRect.left - gap - popoverWidth
+            newArrowClass = "border-l-[#2c2c2e]/95 right-[-8px]"
+        } 
+        // Mobile / No side space: Center horizontally or align best fit
+        else {
+            left = (viewportWidth - popoverWidth) / 2
+            
+            // If strictly mobile, maybe position below or above?
+            // For now, let's keep side logic preference but clamp it if forced.
+            // If centered, arrow needs to point to target.
+            // Let's try to stick to side if possible, but if not, use overlapping or centered.
+            // Actually, for mobile "speech bubble", pointing UP/DOWN is better if side doesn't fit.
+            
+            if (viewportWidth < 500) {
+                 // Mobile view strategy: Center on screen, point arrow to target X
+                 left = (viewportWidth - popoverWidth) / 2
+                 // Ensure left is positive
+                 if (left < 10) left = 10
+
+                 // Check vertical space
+                 // Try Below
+                 if (targetRect.bottom + popoverHeight + gap < viewportHeight) {
+                     top = targetRect.bottom + gap
+                     newArrowClass = "border-b-[#2c2c2e]/95 top-[-8px] left-0 right-0 mx-auto" // Point Up
+                     // We need to offset the arrow to match target X
+                     const arrowX = targetRect.left + (targetRect.width / 2) - left
+                     newArrowStyle = { left: arrowX - 8, right: 'auto', marginLeft: 0 } 
+                 }
+                 // Try Above
+                 else {
+                     top = targetRect.top - popoverHeight - gap
+                     newArrowClass = "border-t-[#2c2c2e]/95 bottom-[-8px] left-0 right-0 mx-auto" // Point Down
+                     const arrowX = targetRect.left + (targetRect.width / 2) - left
+                     newArrowStyle = { left: arrowX - 8, right: 'auto', marginLeft: 0 }
+                 }
+                 
+                 // Return early for mobile layout
+                 setStyle({
+                    position: 'fixed',
+                    left,
+                    top,
+                    zIndex: 100,
+                    width: '320px',
+                    opacity: 1
+                })
+                setArrowClass(newArrowClass)
+                setArrowStyle(newArrowStyle)
+                return
+            }
+        }
+
+        // 2. Vertical Positioning (Desktop Side-by-Side)
+        // Center popover vertically relative to target center
+        const targetCenterY = targetRect.top + (targetRect.height / 2)
+        top = targetCenterY - (popoverHeight / 2)
+
+        // Clamp Vertical to viewport
+        if (top < 10) top = 10
+        if (top + popoverHeight > viewportHeight - 10) top = viewportHeight - 10 - popoverHeight
+
+        // Adjust Arrow Vertical Position to point to Target Center
+        // Arrow is absolute relative to Popover
+        const arrowY = targetCenterY - top - 8 // -8 for half arrow size
+        newArrowStyle = { top: arrowY }
+
+        // Sanity check for arrow within popover bounds (rounded corners)
+        if (arrowY < 12) newArrowStyle.top = 12
+        if (arrowY > popoverHeight - 20) newArrowStyle.top = popoverHeight - 20
+
+        setStyle({
+            position: 'fixed',
+            left,
+            top,
+            zIndex: 100,
+            width: '320px',
+            opacity: 1
+        })
+        setArrowClass(newArrowClass)
+        setArrowStyle(newArrowStyle)
+
+    }, [targetRect])
+
+    // Color indicator based on type
+    const colorClass = item.type === 'income' ? 'bg-green-500' : 'bg-pink-500'
 
     return (
-        <div ref={popoverRef} style={style} className="bg-[#2c2c2e]/95 backdrop-blur-md text-white rounded-xl shadow-2xl border border-white/10 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-start p-4 pb-2 border-b border-white/10">
-                <div className="flex-1 mr-2">
-                    <h3 className="text-lg font-bold leading-tight">{item.title}</h3>
-                    <p className="text-xs text-gray-400 mt-1">{item.type === 'income' ? '수입' : '지출'}</p>
+        <div 
+            ref={popoverRef} 
+            style={style} 
+            className="bg-[#2c2c2e]/95 backdrop-blur-md text-white rounded-xl shadow-2xl border border-white/10 animate-in fade-in zoom-in-95 duration-200 relative text-sm font-sans"
+        >
+            {/* 말풍선 꼬리 (Triangle) */}
+            <div 
+                style={arrowStyle}
+                className={`absolute w-0 h-0 border-[8px] border-transparent ${arrowClass}`}
+            ></div>
+
+            {/* Header: Title & Color Picker */}
+            <div className="flex justify-between items-start p-3 pl-4 pr-3">
+                <div className="flex-1 mr-2 pt-1">
+                    <input 
+                        type="text" 
+                        value={item.title} 
+                        readOnly 
+                        className="bg-transparent text-xl font-bold w-full focus:outline-none placeholder-gray-500"
+                    />
                 </div>
-                <button onClick={onClose} className="p-1 rounded hover:bg-white/10"><X className="w-4 h-4" /></button>
+                <div className="flex items-center gap-1">
+                    <button className="p-1 rounded hover:bg-white/10 transition-colors">
+                         <div className={`w-4 h-4 rounded-sm ${colorClass} border border-white/20 shadow-sm`}></div>
+                    </button>
+                </div>
             </div>
-            <div className="p-4 space-y-3">
-                <div className="flex items-center gap-3 text-sm"><Clock className="w-4 h-4 text-gray-400" /><span>{item.date}</span></div>
-                <div className="flex items-center gap-3 text-sm"><MapPin className="w-4 h-4 text-gray-400" /><span className="text-gray-400">위치 정보 없음</span></div>
-                <div className="pt-2 mt-2 border-t border-white/10">
-                    <p className="text-lg font-bold text-white">{item.amount.toLocaleString()}원</p>
+
+            {/* Section 2: Date & Time */}
+            <div className="px-4 py-2 border-t border-white/10 flex flex-col gap-1">
+                <div className="text-white font-medium">
+                    {format(new Date(item.date), 'yyyy. M. d.')}
                 </div>
+                <div className="flex items-center gap-2 text-gray-400 text-xs">
+                    <Repeat className="w-3 h-3" />
+                    <span>반복: 매월</span>
+                </div>
+                <div className="flex items-center gap-2 text-gray-400 text-xs mt-0.5">
+                    <Bell className="w-3 h-3" />
+                    <span>시작 30분 전에 알림</span>
+                </div>
+            </div>
+
+            {/* Section 3: Amount (Acting as 'Location') */}
+            <div className="px-4 py-2 border-t border-white/10">
+                <div className="flex items-center gap-3">
+                    <span className="text-gray-400 text-xs w-8 text-right">금액</span>
+                    <span className={`text-base font-semibold ${item.type === 'income' ? 'text-green-400' : 'text-white'}`}>
+                        {item.amount.toLocaleString()}원
+                    </span>
+                </div>
+            </div>
+
+            {/* Section 4: Guests Placeholder */}
+            <div className="px-4 py-2 border-t border-white/10 flex items-center gap-2">
+                 <input 
+                    type="text" 
+                    placeholder="초대할 사람 추가" 
+                    className="bg-transparent w-full text-sm placeholder-gray-500 focus:outline-none" 
+                    readOnly
+                />
+            </div>
+
+            {/* Section 5: Notes Placeholder */}
+            <div className="px-4 py-2 pb-3 border-t border-white/10 flex items-center gap-2">
+                <input 
+                    type="text" 
+                    placeholder="메모, URL 또는 첨부 파일 추가" 
+                    className="bg-transparent w-full text-sm placeholder-gray-500 focus:outline-none"
+                    readOnly 
+                />
+            </div>
+
+            {/* Footer Actions (Optional, kept hidden or minimal to match screenshot which doesn't show buttons explicitly but implies editability) */}
+             <div className="absolute top-3 right-10 flex opacity-0 hover:opacity-100 transition-opacity bg-[#2c2c2e] rounded-lg">
+                <button className="p-1.5 hover:text-red-400" onClick={() => { console.log('Delete') }}><Trash2 className="w-4 h-4"/></button>
             </div>
         </div>
     )
@@ -183,7 +342,7 @@ export default function LedgerPage() {
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [pendingDrag, setPendingDrag] = useState<{ id: string, targetDate: string } | null>(null)
-  const [popoverInfo, setPopoverInfo] = useState<{ item: Transaction, position: { x: number, y: number } } | null>(null)
+  const [popoverInfo, setPopoverInfo] = useState<{ item: Transaction, position: { x: number, y: number }, targetRect: DOMRect } | null>(null)
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
@@ -204,7 +363,7 @@ export default function LedgerPage() {
   const handleItemClick = (e: React.MouseEvent, item: Transaction) => {
     e.stopPropagation() // 매우 중요: 드래그 센서와 충돌 방지
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-    setPopoverInfo({ item, position: { x: rect.right, y: rect.top } })
+    setPopoverInfo({ item, position: { x: rect.right, y: rect.top }, targetRect: rect })
   }
 
   const handleMove = () => {
@@ -271,7 +430,7 @@ export default function LedgerPage() {
         <DragOverlay>{activeTransaction ? <DraggableItem t={activeTransaction} isOverlay /> : null}</DragOverlay>
         <button className="fixed bottom-20 right-6 md:right-10 w-14 h-14 md:w-16 md:h-16 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center shadow-lg shadow-blue-600/30 active:scale-95 z-[60] transition-all"><Plus className="w-8 h-8 md:w-10 md:h-10" /></button>
         <DragConfirmDialog isOpen={!!pendingDrag} onClose={() => setPendingDrag(null)} onMove={handleMove} onCopy={handleCopy} />
-        {popoverInfo && <EventDetailPopover item={popoverInfo.item} position={popoverInfo.position} onClose={() => setPopoverInfo(null)} />}
+        {popoverInfo && <EventDetailPopover item={popoverInfo.item} targetRect={popoverInfo.targetRect} onClose={() => setPopoverInfo(null)} />}
       </div>
     </DndContext>
   )
