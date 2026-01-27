@@ -11,7 +11,7 @@ export default function Footer() {
   const isActive = (path: string) => location.pathname === path ? 'text-blue-600 dark:text-blue-500' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'
 
   return (
-    <footer className="flex-none min-h-[64px] h-auto bg-white dark:bg-[#1c1c1e] border-t border-theme flex justify-around items-center px-2 z-50 pb-[env(safe-area-inset-bottom)]">
+    <footer className="fixed bottom-0 w-full flex-none min-h-[64px] h-auto bg-white dark:bg-[#1c1c1e] border-t border-theme flex justify-around items-center px-2 z-50 pb-[env(safe-area-inset-bottom)]">
       <Link to="/main" className={`flex flex-col items-center gap-1 p-2 ${isActive('/main')}`}>
         <Home className="w-6 h-6" />
         <span className="text-[10px] font-medium">홈</span>

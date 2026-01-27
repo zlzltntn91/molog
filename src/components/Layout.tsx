@@ -26,16 +26,16 @@ export default function Layout() {
   const isLedgerPage = location.pathname === '/ledger'
 
   return (
-    <div className="h-screen h-[100dvh] w-full flex flex-col bg-gray-50 text-gray-900 dark:bg-[#1c1c1e] dark:text-white overflow-hidden">
+    <div className="h-[100dvh] w-full flex flex-col bg-gray-50 text-gray-900 dark:bg-[#1c1c1e] dark:text-white overflow-hidden">
       {/* 1. Header (Fixed Height) */}
       <Header isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
 
       {/* 2. Content (Flexible Height, Scrollable) */}
       <main 
         id="main-scroll-container"
-        className={`flex-1 w-full mx-auto overflow-y-auto hide-scrollbar ${
+        className={`flex-1 w-full mx-auto overflow-y-auto hide-scrollbar pb-[calc(64px+env(safe-area-inset-bottom))] ${
           isAuthPage 
-            ? 'max-w-md px-6 flex flex-col justify-center items-center pb-20' // 인증 페이지는 좁게 유지
+            ? 'max-w-md px-6 flex flex-col justify-center items-center pb-20' // 인증 페이지는 좁게 유지 (푸터 없음)
             : isLedgerPage 
               ? 'w-full px-0 py-0' // 가계부는 패딩 없이 꽉 채움
               : 'max-w-7xl px-4 md:px-6 py-6' // 기본 페이지는 적당히 넓게
