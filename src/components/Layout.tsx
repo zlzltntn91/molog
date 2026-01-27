@@ -7,12 +7,16 @@ export default function Layout() {
   const [isDarkMode, setIsDarkMode] = useState(true)
   const location = useLocation()
 
-  // Sync theme with the 'dark' class on the html element
+  // Sync theme with the 'dark' class on the html element and update status bar color
   useEffect(() => {
+    const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+
     if (isDarkMode) {
       document.documentElement.classList.add('dark')
+      metaThemeColor?.setAttribute('content', '#1c1c1e')
     } else {
       document.documentElement.classList.remove('dark')
+      metaThemeColor?.setAttribute('content', '#ffffff')
     }
   }, [isDarkMode])
 
