@@ -17,7 +17,7 @@ interface LedgerCellProps {
 export default function LedgerCell({ day, isCurrentMonth, isTodayDate, transactions, onItemClick, onCellClick, isHighlighting }: LedgerCellProps) {
   const dayStr = format(day, 'yyyy-MM-dd');
   const { setNodeRef, isOver } = useDroppable({ id: dayStr });
-  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Visual feedback state
   const [isPressed, setIsPressed] = useState(false);
