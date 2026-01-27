@@ -74,7 +74,7 @@ export default function AssetsPage() {
       </div>
 
       {/* 추가 버튼 */}
-      <button className="w-full py-4 rounded-xl border border-dashed border-gray-300 dark:border-gray-600 text-gray-500 flex items-center justify-center gap-2 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+      <button className="w-full py-4 rounded-xl border border-dashed border-gray-300 dark:border-gray-600 text-gray-500 flex items-center justify-center gap-2 hover:bg-gray-50 dark:hover:bg-white/5 ">
         <Plus className="w-5 h-5" />
         자산 추가하기
       </button>

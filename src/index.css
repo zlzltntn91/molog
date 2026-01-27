@@ -2,13 +2,55 @@
 
 @variant dark (&:where(.dark, .dark *));
 
-/* Hide scrollbar for Chrome, Safari and Opera */
+/* 
+   [MoneMo Theme Sync Engine - Ultimate Unity]
+   모든 시각적 속성(그림자, 투명도, 블러 포함)을 1초(1000ms) 동안 완벽하게 동기화합니다.
+*/
+*, *::before, *::after {
+  /* 
+     테마 전환 시 변할 수 있는 모든 속성을 나열하여 빠짐없이 챙깁니다.
+     box-shadow: 그림자 색상 변화 동기화
+     opacity/filter: 반투명 요소나 블러 효과 동기화
+  */
+  transition-property: color, background-color, fill, stroke, box-shadow, opacity, filter, backdrop-filter;
+  transition-duration: 1000ms !important;
+  transition-timing-function: ease-in-out !important;
+}
+
+/* 
+   [예외 처리] 경계선(Border)
+   이것만은 '즉시' 바꿉니다. 
+   이유: 천천히 바꾸면 브라우저 색상 혼합 과정에서 지저분한 '흰색 선'이 튀어나오기 때문입니다.
+   이 예외가 오히려 전체적인 깔끔함을 완성합니다.
+*/
+*, .border-b, .border-r, .border-l, .border-t {
+  transition-property: border-color !important;
+  transition-duration: 0s !important;
+  transition-delay: 0s !important;
+}
+
+/* 배경색 기본값 */
+html, body, #root {
+  @apply bg-white dark:bg-[#1c1c1e];
+}
+
+/* SVG 아이콘 완벽 동기화 */
+svg, svg *, path, circle, rect, line {
+  stroke: currentColor !important;
+  /* 부모 요소와 동일하게 1000ms로 설정 */
+  transition: stroke 1000ms ease-in-out, fill 1000ms ease-in-out !important;
+}
+
+/* 브라우저 최적화 */
+main, div, section, header, footer {
+  will-change: background-color, color, box-shadow;
+}
+
+/* Hide scrollbar */
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
-
-/* Hide scrollbar for IE, Edge and Firefox */
 .hide-scrollbar {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

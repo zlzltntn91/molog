@@ -50,7 +50,7 @@ export default function LoginPage() {
       <div className="w-full flex justify-between items-center mb-6 text-sm">
         <label className="flex items-center cursor-pointer select-none">
           <div 
-            className={`w-5 h-5 rounded border flex items-center justify-center mr-2 transition-colors ${
+            className={`w-5 h-5 rounded border flex items-center justify-center mr-2  ${
               rememberMe ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300 dark:bg-transparent dark:border-gray-500'
             }`}
             onClick={() => setRememberMe(!rememberMe)}
@@ -67,7 +67,7 @@ export default function LoginPage() {
       {/* Login Button */}
       <button 
         onClick={handleLogin}
-        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl text-base transition-colors mb-6 shadow-lg shadow-blue-600/30"
+        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl text-base  mb-6 shadow-lg shadow-blue-600/30"
       >
         로그인
       </button>
@@ -84,7 +84,7 @@ export default function LoginPage() {
         {/* Google */}
         <button 
           onClick={handleLogin}
-          className="w-full font-medium py-3.5 rounded-xl text-base transition-colors flex items-center justify-center relative bg-white hover:bg-gray-50 text-black border border-gray-200 shadow-sm dark:border-transparent dark:hover:bg-gray-100"
+          className="w-full font-medium py-3.5 rounded-xl text-base  flex items-center justify-center relative bg-white hover:bg-gray-50 text-black border border-gray-200 shadow-sm dark:border-transparent dark:hover:bg-gray-100"
         >
           <FcGoogle className="w-5 h-5 absolute left-4" />
           <span>구글 계정으로 로그인</span>
@@ -93,7 +93,7 @@ export default function LoginPage() {
         {/* Kakao */}
         <button 
           onClick={handleLogin}
-          className="w-full bg-[#FEE500] hover:bg-[#FDD800] text-[#3c1e1e] font-medium py-3.5 rounded-xl text-base transition-colors flex items-center justify-center relative shadow-sm"
+          className="w-full bg-[#FEE500] hover:bg-[#FDD800] text-[#3c1e1e] font-medium py-3.5 rounded-xl text-base  flex items-center justify-center relative shadow-sm"
         >
           <RiKakaoTalkFill className="w-6 h-6 absolute left-4" />
           <span>카카오톡으로 로그인</span>
@@ -102,7 +102,7 @@ export default function LoginPage() {
         {/* Naver */}
         <button 
           onClick={handleLogin}
-          className="w-full bg-[#03C75A] hover:bg-[#02b351] text-white font-medium py-3.5 rounded-xl text-base transition-colors flex items-center justify-center relative shadow-sm"
+          className="w-full bg-[#03C75A] hover:bg-[#02b351] text-white font-medium py-3.5 rounded-xl text-base  flex items-center justify-center relative shadow-sm"
         >
           <SiNaver className="w-4 h-4 absolute left-4" />
           <span>네이버 아이디로 로그인</span>

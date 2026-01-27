@@ -9,23 +9,22 @@ export default function Footer() {
   if (hideFooterPaths.includes(location.pathname)) return null
 
   const isActive = (path: string) => location.pathname === path ? 'text-blue-600 dark:text-blue-500' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'
-  const transitionClass = "transition-colors duration-300 ease-in-out"
 
   return (
-    <footer className={`flex-none h-16 bg-white dark:bg-[#1c1c1e] border-t border-gray-100 dark:border-white/5 flex justify-around items-center px-2 z-50 safe-area-bottom ${transitionClass}`}>
-      <Link to="/main" className={`flex flex-col items-center gap-1 p-2 transition-colors ${isActive('/main')}`}>
+    <footer className="flex-none h-16 bg-white dark:bg-[#1c1c1e] border-t border-gray-100 dark:border-white/5 flex justify-around items-center px-2 z-50 safe-area-bottom">
+      <Link to="/main" className={`flex flex-col items-center gap-1 p-2 ${isActive('/main')}`}>
         <Home className="w-6 h-6" />
         <span className="text-[10px] font-medium">홈</span>
       </Link>
-      <Link to="/assets" className={`flex flex-col items-center gap-1 p-2 transition-colors ${isActive('/assets')}`}>
+      <Link to="/assets" className={`flex flex-col items-center gap-1 p-2 ${isActive('/assets')}`}>
         <PieChart className="w-6 h-6" />
         <span className="text-[10px] font-medium">자산</span>
       </Link>
-      <Link to="/ledger" className={`flex flex-col items-center gap-1 p-2 ${transitionClass} ${isActive('/ledger')}`}>
+      <Link to="/ledger" className={`flex flex-col items-center gap-1 p-2 ${isActive('/ledger')}`}>
         <Wallet className="w-6 h-6" />
         <span className="text-[10px] font-medium">가계부</span>
       </Link>
-      <button className={`flex flex-col items-center gap-1 p-2 ${transitionClass} ${isActive('/my')}`}>
+      <button className={`flex flex-col items-center gap-1 p-2 ${isActive('/my')}`}>
         <User className="w-6 h-6" />
         <span className="text-[10px] font-medium">MY</span>
       </button>

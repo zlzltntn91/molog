@@ -55,19 +55,19 @@ export default function MainPage() {
          <h3 className="text-sm font-bold mb-4">빠른 메뉴</h3>
          <div className="flex justify-between px-2">
             <button className="flex flex-col items-center gap-2 group w-16">
-              <div className="w-12 h-12 bg-gray-50 dark:bg-gray-800 rounded-2xl flex items-center justify-center group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20 transition-colors">
+              <div className="w-12 h-12 bg-gray-50 dark:bg-gray-800 rounded-2xl flex items-center justify-center group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20 ">
                 <LayoutDashboard className="w-5 h-5 text-gray-600 dark:text-gray-400 group-hover:text-blue-600" />
               </div>
               <span className="text-xs text-gray-600 dark:text-gray-400">요약</span>
             </button>
             <button className="flex flex-col items-center gap-2 group w-16">
-              <div className="w-12 h-12 bg-gray-50 dark:bg-gray-800 rounded-2xl flex items-center justify-center group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20 transition-colors">
+              <div className="w-12 h-12 bg-gray-50 dark:bg-gray-800 rounded-2xl flex items-center justify-center group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20 ">
                 <PieChart className="w-5 h-5 text-gray-600 dark:text-gray-400 group-hover:text-blue-600" />
               </div>
               <span className="text-xs text-gray-600 dark:text-gray-400">분석</span>
             </button>
             <button className="flex flex-col items-center gap-2 group w-16">
-              <div className="w-12 h-12 bg-gray-50 dark:bg-gray-800 rounded-2xl flex items-center justify-center group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20 transition-colors">
+              <div className="w-12 h-12 bg-gray-50 dark:bg-gray-800 rounded-2xl flex items-center justify-center group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20 ">
                 <Settings className="w-5 h-5 text-gray-600 dark:text-gray-400 group-hover:text-blue-600" />
               </div>
               <span className="text-xs text-gray-600 dark:text-gray-400">설정</span>

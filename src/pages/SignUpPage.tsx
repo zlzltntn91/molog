@@ -45,7 +45,7 @@ export default function SignUpPage() {
         />
       </div>
 
-      <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl text-base transition-colors mb-4 shadow-lg shadow-blue-600/30">
+      <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl text-base  mb-4 shadow-lg shadow-blue-600/30">
         가입하기
       </button>
 
