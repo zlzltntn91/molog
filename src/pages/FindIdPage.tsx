@@ -23,6 +23,7 @@ export default function FindIdPage() {
           icon={Phone} 
           type="tel" 
           placeholder="전화번호" 
+          inputMode="tel"
           containerClassName="border-none"
         />
       </div>

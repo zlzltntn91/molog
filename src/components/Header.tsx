@@ -25,7 +25,7 @@ export default function Header({ isDarkMode, toggleTheme }: HeaderProps) {
   }
 
   return (
-    <header className="flex-none h-14 bg-white/80 dark:bg-[#1c1c1e]/80 backdrop-blur-md flex items-center px-4 z-50 sticky top-0 border-b border-theme justify-between">
+    <header className="flex-none h-14 box-content pt-[env(safe-area-inset-top)] bg-white/80 dark:bg-[#1c1c1e]/80 backdrop-blur-md flex items-center px-4 z-50 sticky top-0 border-b border-theme justify-between">
       {/* Left Area: Back Button or Title */}
       <div className="flex items-center justify-start z-10">
         {isMainPage ? (

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { format, isSameDay, isSameMonth, subMonths, addMonths, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 import { Plus, Minus, ChevronLeft, ChevronRight, Calendar, Trash2 } from 'lucide-react';
 import AutoResizeTextarea from '../AutoResizeTextarea';
+import BufferedInput from '../BufferedInput';
 
 interface Transaction {
   id: string;
@@ -134,12 +135,17 @@ export default function LedgerCard({ t, isExpanded, isCalOpen, calMonth, onExpan
                     {/* 3. Amount */}
                     <div className="pr-1.5">
                         <div className={`flex items-center gap-1 text-xl font-bold ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                            <input 
+                            <BufferedInput 
                                 type="text" 
                                 value={t.amount.toLocaleString()} 
-                                onChange={(e) => { const val = Number(e.target.value.replace(/[^0-9]/g, '')); onUpdate({ ...t, amount: val }); }} 
-                                onKeyDown={(e) => e.key === 'Enter' && onCollapse()} 
+                                onValueChange={(val) => { 
+                                    const num = Number(val.replace(/[^0-9]/g, '')); 
+                                    onUpdate({ ...t, amount: num }); 
+                                }}
+                                onEnter={onCollapse}
                                 onClick={(e) => e.stopPropagation()}
+                                inputMode="numeric"
+                                pattern="[0-9]*"
                                 className="bg-transparent focus:outline-none w-full text-right placeholder-gray-400 p-0" 
                             />
                             <span className="text-base text-gray-500 font-medium">원</span>

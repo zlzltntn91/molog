@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
 import { ChevronLeft, ChevronRight, Trash2, Plus, Minus, Calendar } from 'lucide-react';
 import AutoResizeTextarea from '../AutoResizeTextarea';
+import BufferedInput from '../BufferedInput';
 
 // 타입 내부 정의 (안전)
 interface Transaction {
@@ -208,21 +209,26 @@ export default function LedgerPopover({ item, targetRect, onClose, onUpdate, onD
                         />
                     </div>
 
-                    {/* 3. Amount */}
-                    <div className="pr-1.5">
-                        <div className={`flex items-center gap-1 text-xl font-bold ${type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                            <input 
-                              type="text" 
-                              value={amount.toLocaleString()} 
-                              onChange={e => updateField('amount', Number(e.target.value.replace(/[^0-9]/g, '')))} 
-                              onKeyDown={e => e.key === 'Enter' && onClose()}
-                              onClick={e => e.stopPropagation()}
-                              className="bg-transparent focus:outline-none w-full text-right placeholder-gray-400 p-0"
-                              placeholder="0"
-                            />
-                            <span className="text-base text-gray-500 font-medium">원</span>
-                        </div>
-                    </div>
+            {/* 3. Amount (그다음으로 크게, 색상 강조) */}
+            <div>
+                <div className={`flex items-center gap-1 text-xl font-bold ${type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    <BufferedInput 
+                      type="text" 
+                      value={amount.toLocaleString()} 
+                      onValueChange={(val) => {
+                          const num = Number(val.replace(/[^0-9]/g, ''));
+                          updateField('amount', num);
+                      }}
+                      onEnter={onClose}
+                      onClick={(e) => e.stopPropagation()}
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      className="bg-transparent focus:outline-none w-full text-right placeholder-gray-400 p-0"
+                      placeholder="0"
+                    />
+                    <span className="text-base text-gray-500 font-medium">원</span>
+                </div>
+            </div>
                 </div>
             </div>
         </div>, 

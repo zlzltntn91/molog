@@ -60,6 +60,7 @@ export default function AutoResizeTextarea({ value, onChange, onEnter, className
         }}
         onClick={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
+        inputMode="text"
         className={className || "bg-transparent text-2xl font-bold focus:outline-none w-full placeholder-gray-400 leading-tight resize-none overflow-hidden min-h-[1.5em]"}
         placeholder={placeholder || "내역 이름"}
         rows={1}
