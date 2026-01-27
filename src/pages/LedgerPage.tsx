@@ -1,270 +1,246 @@
-import { useState, useRef, useEffect } from 'react'
-import { createPortal } from 'react-dom'
-import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, addMonths, subMonths, isSameDay } from 'date-fns'
-import { Plus, ChevronLeft, ChevronRight, Repeat, Trash2 } from 'lucide-react'
-import { DndContext, useDraggable, useDroppable, DragOverlay, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
-import { CSS } from '@dnd-kit/utilities'
+import { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, addMonths, subMonths, addDays, subDays, isSameDay } from 'date-fns';
+import { Plus, Minus, ChevronLeft, ChevronRight, Calendar, Trash2, ArrowUp } from 'lucide-react';
+import { DndContext, DragOverlay, MouseSensor, TouchSensor, useSensor, useSensors, DragStartEvent, DragEndEvent, PointerSensor } from '@dnd-kit/core';
+import LedgerItem from '../components/Ledger/LedgerItem';
+import LedgerCell from '../components/Ledger/LedgerCell';
+import LedgerPopover from '../components/Ledger/LedgerPopover';
+import LedgerCard from '../components/Ledger/LedgerCard';
+import ConfirmModal from '../components/ConfirmModal';
 
-// ---- Types ----
+// 타입 내부 정의
 interface Transaction {
-  id: string
-  date: string
-  title: string
-  amount: number
-  type: 'income' | 'expense'
-}
-
-// ---- Components ----
-const DraggableItem = ({ t, isOverlay, onClick }: { t: Transaction, isOverlay?: boolean, onClick?: (e: React.MouseEvent, t: Transaction) => void }) => {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: t.id,
-    data: t
-  })
-
-  const style = {
-    transform: CSS.Translate.toString(transform),
-    opacity: isDragging ? 0.3 : 1,
-    touchAction: 'none',
-  }
-
-  const colorClasses = t.type === 'income' 
-    ? 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300' 
-    : 'bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-300'
-
-  return (
-    <div 
-      ref={setNodeRef} 
-      style={style} 
-      {...listeners} 
-      {...attributes}
-      onClick={(e) => {
-        if (!isDragging && onClick) onClick(e, t)
-      }}
-      className={`w-full flex items-center px-1.5 py-1 rounded-md shadow-sm truncate mb-1 cursor-pointer hover:brightness-95 ${colorClasses} ${isOverlay ? 'scale-105 z-50 ring-2 ring-blue-500' : ''}`}
-    >
-      <span className="text-xs md:text-sm font-bold truncate flex-1">{t.title}</span>
-      <span className="hidden xl:block text-[10px] ml-1 font-medium opacity-80 whitespace-nowrap">{t.amount.toLocaleString()}</span>
-    </div>
-  )
-}
-
-const DroppableCell = ({ day, isCurrentMonth, isTodayDate, transactions, onItemClick }: any) => {
-  const dayStr = format(day, 'yyyy-MM-dd')
-  const { setNodeRef, isOver } = useDroppable({ id: dayStr })
-
-  return (
-    <div 
-      ref={setNodeRef}
-      className={`border-b border-r border-gray-100 dark:border-white/5 p-1 relative flex flex-col h-full ${!isCurrentMonth ? 'bg-gray-50/50 dark:bg-black/20' : ''} ${isOver ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
-    >
-      <div className="flex justify-end p-0.5">
-        <span className={`text-xs md:text-sm font-bold w-6 h-6 flex items-center justify-center rounded-full ${isTodayDate ? 'bg-blue-600 text-white' : !isCurrentMonth ? 'text-gray-300 dark:text-gray-600' : 'text-gray-700 dark:text-gray-300'}`}>
-          {format(day, 'd')}
-        </span>
-      </div>
-      <div className="flex flex-col mt-0.5 flex-1 overflow-hidden">
-        {transactions.slice(0, 3).map((t: Transaction) => (
-          <DraggableItem key={t.id} t={t} onClick={onItemClick} />
-        ))}
-        {transactions.length > 3 && (
-          <div className="text-[10px] text-gray-400 font-bold text-center mt-auto">+{transactions.length - 3}건</div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-const PopoverArrow = ({ direction, style }: any) => (
-    <div style={{ ...style, width: 20, height: 10, position: 'absolute', pointerEvents: 'none', zIndex: 101 }}>
-        <svg width="20" height="10" viewBox="0 0 20 10" fill="none">
-            <path d={direction === 'top' ? "M 0 10 L 10 0 L 20 10" : "M 0 0 L 10 10 L 20 0"} className="fill-white dark:fill-[#2c2c2e] stroke-gray-100 dark:border-white/5" strokeWidth="1" />
-        </svg>
-    </div>
-)
-
-const EventDetailPopover = ({ item, targetRect, onClose, onUpdate, onDelete }: any) => {
-    const popoverRef = useRef<HTMLDivElement>(null)
-    const [style, setStyle] = useState<React.CSSProperties>({ opacity: 0, position: 'fixed' })
-    const [arrowDir, setArrowDir] = useState<'top' | 'bottom'>('bottom')
-    const [arrowStyle, setArrowStyle] = useState<any>({})
-    const [isCalendarOpen, setIsCalendarOpen] = useState(false)
-    const [calMonth, setCalMonth] = useState(new Date(item.date))
-
-    useEffect(() => {
-        const update = () => {
-            if (!popoverRef.current) return
-            const isBottom = targetRect.top > window.innerHeight / 2
-            const left = Math.max(10, Math.min(targetRect.left - 160 + targetRect.width/2, window.innerWidth - 330))
-            
-            if (isBottom) {
-                setStyle({ position: 'fixed', left, bottom: window.innerHeight - targetRect.top + 10, width: 320, opacity: 1, zIndex: 100 })
-                setArrowDir('bottom'); setArrowStyle({ bottom: -9, left: targetRect.left - left + targetRect.width/2 - 10 })
-            } else {
-                setStyle({ position: 'fixed', left, top: targetRect.bottom + 10, width: 320, opacity: 1, zIndex: 100 })
-                setArrowDir('top'); setArrowStyle({ top: -9, left: targetRect.left - left + targetRect.width/2 - 10 })
-            }
-        }
-        update(); window.addEventListener('resize', update);
-        return () => window.removeEventListener('resize', update)
-    }, [targetRect, item, isCalendarOpen])
-
-    useEffect(() => {
-        const outside = (e: any) => { if (popoverRef.current && !popoverRef.current.contains(e.target) && !e.target.closest('.ledger-item')) onClose() }
-        document.addEventListener('mousedown', outside); return () => document.removeEventListener('mousedown', outside)
-    }, [onClose])
-
-    const days = eachDayOfInterval({ start: startOfWeek(startOfMonth(calMonth)), end: endOfWeek(endOfMonth(calMonth)) })
-
-    return createPortal(
-        <div ref={popoverRef} style={style} className="bg-white dark:bg-[#2c2c2e] text-gray-900 dark:text-white rounded-xl shadow-2xl border border-gray-100 dark:border-white/5 p-4 text-sm">
-            <PopoverArrow direction={arrowDir} style={arrowStyle} />
-            <div className="flex justify-between mb-4">
-                <input 
-                  type="text" 
-                  value={item.title} 
-                  onChange={e => onUpdate({...item, title: e.target.value})} 
-                  onKeyDown={e => e.key === 'Enter' && onClose()}
-                  className="bg-transparent text-xl font-bold focus:outline-none w-full" 
-                />
-                <button onClick={() => onDelete(item.id)} className="text-gray-400 hover:text-red-500"><Trash2 className="w-5 h-5" /></button>
-            </div>
-            <div className="mb-4">
-                <div onClick={() => setIsCalendarOpen(!isCalendarOpen)} className="cursor-pointer flex justify-between font-medium">
-                    <span>{format(new Date(item.date), 'yyyy. M. d.')}</span>
-                    <ChevronRight className={`w-4 h-4 ${isCalendarOpen ? 'rotate-90' : ''}`} />
-                </div>
-                {isCalendarOpen && (
-                    <div className="mt-2 p-2 bg-gray-50 dark:bg-black/20 rounded-lg">
-                        <div className="flex justify-between mb-2">
-                            <button onClick={() => setCalMonth(subMonths(calMonth, 1))}><ChevronLeft className="w-4 h-4" /></button>
-                            <span className="font-bold">{format(calMonth, 'yyyy. M')}</span>
-                            <button onClick={() => setCalMonth(addMonths(calMonth, 1))}><ChevronRight className="w-4 h-4" /></button>
-                        </div>
-                        <div className="grid grid-cols-7 text-center gap-1">
-                            {['일','월','화','수','목','금','토'].map(d => <div key={d} className="text-[10px] text-gray-400">{d}</div>)}
-                            {days.map(d => (
-                                <button key={d.toISOString()} onClick={() => onUpdate({...item, date: format(d, 'yyyy-MM-dd')})} className={`w-7 h-7 text-xs rounded-full flex items-center justify-center mx-auto ${isSameDay(d, new Date(item.date)) ? 'bg-blue-600 text-white' : isSameMonth(d, calMonth) ? 'text-gray-700 dark:text-gray-200' : 'text-gray-300 dark:text-gray-600'}`}>{format(d, 'd')}</button>
-                            ))}
-                        </div>
-                    </div>
-                )}
-            </div>
-            <div className="flex justify-between items-center border-t border-gray-100 dark:border-white/5 pt-4">
-                <span className="text-gray-400">금액</span>
-                <div className="flex items-center gap-1 font-bold">
-                    <input 
-                      type="text" 
-                      value={item.amount.toLocaleString()} 
-                      onChange={e => onUpdate({...item, amount: Number(e.target.value.replace(/[^0-9]/g, ''))})} 
-                      onKeyDown={e => e.key === 'Enter' && onClose()}
-                      className="bg-transparent text-right focus:outline-none" 
-                    />
-                    <span>원</span>
-                </div>
-            </div>
-        </div>, document.body
-    )
+  id: string;
+  date: string;
+  title: string;
+  amount: number;
+  type: 'income' | 'expense';
 }
 
 export default function LedgerPage() {
-  const [currentDate, setCurrentDate] = useState(new Date())
-  const [transactions, setTransactions] = useState<Transaction[]>([
-    { id: '1', date: '2026-01-21', title: '점심 식사', amount: 12000, type: 'expense' },
-    { id: '2', date: '2026-01-21', title: '편의점 쇼핑', amount: 4500, type: 'expense' },
-    { id: '3', date: '2026-01-21', title: '스타벅스 커피', amount: 5000, type: 'expense' },
-    { id: '6', date: '2026-01-20', title: '정기 월급', amount: 3500000, type: 'income' },
-  ])
-  const [activeId, setActiveId] = useState<string | null>(null)
-  const [popover, setPopover] = useState<{ item: Transaction, rect: DOMRect } | null>(null)
+  const [searchParams, setSearchParams] = useSearchParams();
+  const viewMode = (searchParams.get('view') as 'month' | 'day') || 'month';
+  const [currentDate, setCurrentDate] = useState(new Date());
+  
+  const generateDummyData = (): Transaction[] => {
+    const data: Transaction[] = [
+      { id: '1', date: '2026-01-21', title: '점심 식사', amount: 12000, type: 'expense' },
+      { id: '2', date: '2026-01-21', title: '편의점 쇼핑', amount: 4500, type: 'expense' },
+      { id: '3', date: '2026-01-21', title: '스타벅스 커피', amount: 5000, type: 'expense' },
+      { id: '4', date: '2026-01-20', title: '정기 월급', amount: 3500000, type: 'income' },
+      { id: '5', date: '2026-01-15', title: '관리비', amount: 250000, type: 'expense' },
+      { id: '6', date: '2026-01-10', title: '친구 모임', amount: 85000, type: 'expense' },
+      { id: '7', date: '2026-01-05', title: '통신비', amount: 65000, type: 'expense' },
+      { id: '8', date: '2026-01-01', title: '새해 용돈', amount: 200000, type: 'income' },
+    ];
+    for (let i = 1; i <= 12; i++) {
+      data.push({ id: `2025-${i}`, date: `2025-${String(i).padStart(2, '0')}-15`, title: `${i}월 월급`, amount: 3000000, type: 'income' });
+      data.push({ id: `2025-${i}-ex`, date: `2025-${String(i).padStart(2, '0')}-20`, title: `${i}월 식비`, amount: 450000, type: 'expense' });
+    }
+    for (let i = 1; i <= 10; i++) {
+      data.push({ id: `extra-${i}`, date: '2026-01-21', title: `추가 지출 ${i}`, amount: i * 1000, type: 'expense' });
+    }
+    return data;
+  };
 
-  const sensors = useSensors(useSensor(MouseSensor, { activationConstraint: { distance: 8 } }), useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }))
+  const [transactions, setTransactions] = useState<Transaction[]>(generateDummyData());
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [popover, setPopover] = useState<{ item: Transaction, rect: DOMRect } | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [calendarOpenId, setCalendarOpenId] = useState<string | null>(null);
+  const [calMonth, setCalMonth] = useState(new Date());
+  const [isHighlighting, setIsHighlighting] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  const monthStart = startOfMonth(currentDate)
-  const days = eachDayOfInterval({ start: startOfWeek(monthStart), end: endOfWeek(endOfMonth(monthStart)) })
-  const activeT = activeId ? transactions.find(t => t.id === activeId) : null
+  // 항목 확장 시 중앙으로 자동 스크롤
+  useEffect(() => {
+    if (expandedId) {
+      // DOM 업데이트 후 실행되도록 약간의 지연을 줌
+      setTimeout(() => {
+        const element = document.getElementById(`ledger-item-${expandedId}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+    }
+  }, [expandedId]);
+
+  // 뷰 모드 변경 시 모든 상호작용 상태 초기화 (더블 클릭 문제 해결)
+  useEffect(() => {
+    setPopover(null);
+    setExpandedId(null);
+    setCalendarOpenId(null);
+    setDeleteId(null);
+    setIsHighlighting(false);
+  }, [viewMode]);
+
+  const setViewMode = (mode: 'month' | 'day') => {
+    setSearchParams({ view: mode });
+  };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } })
+  );
+
+  useEffect(() => {
+    if (isHighlighting) {
+      const timer = setTimeout(() => setIsHighlighting(false), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [isHighlighting]);
+
+  const handleTodayClick = () => {
+    setCurrentDate(new Date());
+    if (viewMode === 'month') setIsHighlighting(true);
+  };
+
+  const handleCellClick = (e: React.MouseEvent, day: Date) => {
+    if (activeId) return;
+    setCurrentDate(day);
+    setViewMode('day');
+  };
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(String(event.active.id));
+    setPopover(null);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveId(null);
+    if (over && active.id !== over.id) {
+      setTransactions(prev => prev.map(t => t.id === active.id ? { ...t, date: String(over.id) } : t));
+    }
+  };
+
+  const goToLatestTransaction = () => {
+    if (transactions.length === 0) return;
+    const sorted = [...transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const latestDate = new Date(sorted[0].date);
+    setCurrentDate(latestDate);
+  };
+
+  const handleDelete = () => {
+    if (deleteId) {
+      setTransactions(prev => prev.filter(t => t.id !== deleteId));
+      setDeleteId(null);
+      setPopover(null);
+      setExpandedId(null);
+    }
+  };
+
+  const monthStart = startOfMonth(currentDate);
+  const days = eachDayOfInterval({ start: startOfWeek(monthStart), end: endOfWeek(endOfMonth(monthStart)) });
+  const weekStart = startOfWeek(currentDate);
+  const weekDays = eachDayOfInterval({ start: weekStart, end: endOfWeek(weekStart) });
+  const activeTransaction = activeId ? transactions.find(t => t.id === activeId) : null;
+  const dayTransactions = transactions.filter(t => t.date === format(currentDate, 'yyyy-MM-dd'));
+  const dayIncome = dayTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+  const dayExpense = dayTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
 
   return (
-    <DndContext sensors={sensors} onDragStart={e => {setActiveId(String(e.active.id)); setPopover(null)}} onDragEnd={e => {setActiveId(null); if (e.over && e.active.id !== e.over.id) setTransactions(prev => prev.map(t => t.id === e.active.id ? {...t, date: String(e.over!.id)} : t))}}>
-      <div className="w-full h-full flex flex-col bg-white dark:bg-[#1c1c1e]">
-        <header className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-white/5">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">{format(currentDate, 'yyyy년 M월')}</h2>
-            <div className="flex gap-2">
-                <button 
-                  onClick={() => setCurrentDate(subMonths(currentDate, 1))} 
-                  className="p-2 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-white/5 rounded-full"
-                >
-                  <ChevronLeft className="w-6 h-6" />
-                </button>
-                <button 
-                  onClick={() => setCurrentDate(new Date())} 
-                  className="px-3 py-1 border border-gray-100 dark:border-white/5 rounded text-gray-900 dark:text-white text-sm font-bold hover:bg-gray-50 dark:hover:bg-white/5"
-                >
-                  오늘
-                </button>
-                <button 
-                  onClick={() => setCurrentDate(addMonths(currentDate, 1))} 
-                  className="p-2 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-white/5 rounded-full"
-                >
-                  <ChevronRight className="w-6 h-6" />
-                </button>
+    <div className="w-full h-full flex flex-col bg-white dark:bg-[#1c1c1e]">
+      <header className="flex items-center justify-between p-4 border-b border-theme bg-white/80 dark:bg-[#1c1c1e]/80 backdrop-blur-md sticky top-0 z-20 h-16">
+          <div className="flex items-center flex-1 min-w-0">
+              <h2 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white cursor-pointer truncate" onClick={() => setViewMode('month')}>
+                  {viewMode === 'month' ? format(currentDate, 'yyyy년 M월') : format(currentDate, 'yyyy년 M월 d일')}
+              </h2>
+          </div>
+          <div className="absolute left-1/2 -translate-x-1/2 flex bg-gray-100 dark:bg-white/10 rounded-lg p-1 z-30">
+              <button onClick={() => setViewMode('day')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${viewMode === 'day' ? 'bg-white dark:bg-[#2c2c2e] shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>일</button>
+              <button onClick={() => setViewMode('month')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${viewMode === 'month' ? 'bg-white dark:bg-[#2c2c2e] shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>월</button>
+          </div>
+          <div className="flex items-center gap-1 md:gap-2 flex-1 justify-end">
+              <button onClick={() => { if (viewMode === 'month') setCurrentDate(subMonths(currentDate, 1)); else setCurrentDate(d => subDays(d, 1)); }} className="p-2 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-white/5 rounded-full"><ChevronLeft className="w-5 h-5 md:w-6 md:h-6" /></button>
+              <button onClick={handleTodayClick} className="px-2 md:px-3 py-1 border border-theme rounded text-gray-900 dark:text-white text-[10px] md:text-sm font-bold hover:bg-gray-50 dark:hover:bg-white/5">오늘</button>
+              <button onClick={() => { if (viewMode === 'month') setCurrentDate(addMonths(currentDate, 1)); else setCurrentDate(d => addDays(d, 1)); }} className="p-2 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-white/5 rounded-full"><ChevronRight className="w-5 h-5 md:w-6 md:h-6" /></button>
+          </div>
+      </header>
+
+      {viewMode === 'month' ? (
+        <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+            <div className="grid grid-cols-7 border-b border-theme bg-gray-50 dark:bg-[#1c1c1e]">
+              {['일', '월', '화', '수', '목', '금', '토'].map((day, i) => (
+                <div key={day} className={`text-center py-2 text-xs font-bold ${i === 0 ? 'text-red-500' : i === 6 ? 'text-blue-500' : 'text-gray-500'}`}>{day}</div>
+              ))}
             </div>
-        </header>
+            <main className="flex-1 grid grid-cols-7 overflow-hidden border-l border-theme" style={{ gridTemplateRows: `repeat(${Math.ceil(days.length / 7)}, minmax(0, 1fr))` }}>
+              {days.map(d => {
+                const dateStr = format(d, 'yyyy-MM-dd');
+                const sortedTransactions = transactions.filter(t => t.date === dateStr).sort((a, b) => {
+                    if (a.type !== b.type) return a.type === 'income' ? -1 : 1;
+                    if (b.amount !== a.amount) return b.amount - a.amount;
+                    return a.id.localeCompare(b.id);
+                });
+                return (
+                  <LedgerCell 
+                    key={dateStr} day={d} isCurrentMonth={isSameMonth(d, monthStart)} isTodayDate={isToday(d)} transactions={sortedTransactions} 
+                    onItemClick={(e, item) => { e.stopPropagation(); setPopover({ item, rect: e.currentTarget.getBoundingClientRect() }); }}
+                    onCellClick={(e) => handleCellClick(e, d)} isHighlighting={isHighlighting}
+                  />
+                );
+              })}
+            </main>
+            <DragOverlay>{activeTransaction ? <LedgerItem t={activeTransaction} isOverlay /> : null}</DragOverlay>
+        </DndContext>
+      ) : (
+          <div className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-[#1c1c1e] relative">
+              <div className="flex justify-between items-center px-4 py-3 border-b border-theme bg-white dark:bg-[#1c1c1e]">
+                  {weekDays.map((d, i) => {
+                      const isSelected = isSameDay(d, currentDate);
+                      const hasData = transactions.some(t => t.date === format(d, 'yyyy-MM-dd'));
+                      const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+                      return (
+                          <button key={d.toISOString()} onClick={() => setCurrentDate(d)} className={`flex flex-col items-center justify-center w-10 h-16 rounded-2xl transition-all relative ${isSelected ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 shadow-md' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5'}`}>
+                              <span className={`text-[10px] font-medium mb-1 ${i === 0 && !isSelected ? 'text-red-500' : i === 6 && !isSelected ? 'text-blue-500' : ''}`}>{dayNames[i]}</span>
+                              <span className={`text-base font-bold ${isToday(d) && !isSelected ? 'text-blue-600' : ''}`}>{format(d, 'd')}</span>
+                              {hasData && <div className={`absolute bottom-2 w-1 h-1 rounded-full ${isSelected ? 'bg-blue-400' : 'bg-blue-500'}`} />}
+                          </button>
+                      )
+                  })}
+              </div>
 
-        <div className="grid grid-cols-7 border-b border-gray-100 dark:border-white/5 bg-gray-50 dark:bg-[#1c1c1e]">
-          {['일', '월', '화', '수', '목', '금', '토'].map((day, i) => (
-            <div 
-              key={day} 
-              className={`text-center py-2 text-xs font-bold ${i === 0 ? 'text-red-500' : i === 6 ? 'text-blue-500' : 'text-gray-500'}`}
-            >
-              {day}
-            </div>
-          ))}
-        </div>
+              <div className="px-6 py-4 flex justify-between items-center border-b border-theme bg-gray-50/50 dark:bg-black/20">
+                  <div className="flex flex-col"><span className="text-xs text-gray-500 mb-1">수입</span><span className="text-lg font-bold text-green-600">+{dayIncome.toLocaleString()}</span></div>
+                  <div className="h-8 w-px bg-gray-200 dark:bg-white/10 mx-4"></div>
+                  <div className="flex flex-col text-right"><span className="text-xs text-gray-500 mb-1">지출</span><span className="text-lg font-bold text-red-500">-{dayExpense.toLocaleString()}</span></div>
+              </div>
 
-        <main 
-          className="flex-1 grid grid-cols-7 overflow-hidden border-l border-gray-100 dark:border-white/5"
-          style={{ gridTemplateRows: `repeat(${Math.ceil(days.length / 7)}, minmax(0, 1fr))` }}
-        >
-          {days.map(d => {
-            const dateStr = format(d, 'yyyy-MM-dd');
-            const sortedTransactions = transactions
-              .filter(t => t.date === dateStr)
-              .sort((a, b) => {
-                if (a.type !== b.type) return a.type === 'income' ? -1 : 1;
-                if (b.amount !== a.amount) return b.amount - a.amount;
-                return a.id.localeCompare(b.id);
-              });
-
-            return (
-              <DroppableCell 
-                key={dateStr} 
-                day={d} 
-                isCurrentMonth={isSameMonth(d, monthStart)} 
-                isTodayDate={isToday(d)} 
-                transactions={sortedTransactions} 
-                onItemClick={(e: any, item: any) => { 
-                  e.stopPropagation(); 
-                  setPopover({ item, rect: e.currentTarget.getBoundingClientRect() }) 
-                }} 
-              />
-            );
-          })}
-        </main>
-        <DragOverlay>{activeT ? <DraggableItem t={activeT} isOverlay /> : null}</DragOverlay>
-        <button className="fixed bottom-20 right-6 w-14 h-14 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg active:scale-95 z-[60]"><Plus className="w-8 h-8" /></button>
-        {popover && (
-          <EventDetailPopover 
-            item={transactions.find(t => t.id === popover.item.id) || popover.item} 
-            targetRect={popover.rect} 
-            onClose={() => setPopover(null)} 
-            onUpdate={(u: Transaction) => setTransactions(prev => prev.map(t => t.id === u.id ? u : t))} 
-            onDelete={(id: string) => { 
-              setTransactions(prev => prev.filter(t => t.id !== id)); 
-              setPopover(null); 
-            }} 
-          />
-        )}
-      </div>
-    </DndContext>
-  )
+              <div className="flex-1 overflow-y-auto p-4 pb-20">
+                  {dayTransactions.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center h-full text-gray-400 opacity-60"><Calendar className="w-12 h-12 mb-2 stroke-1" /><p>내역이 없습니다.</p></div>
+                  ) : (
+                      <div className="space-y-3">
+                          {dayTransactions.map(t => (
+                            <LedgerCard
+                                key={t.id}
+                                t={t}
+                                isExpanded={expandedId === t.id}
+                                isCalOpen={calendarOpenId === t.id}
+                                calMonth={calMonth}
+                                onExpand={() => { 
+                                    setExpandedId(t.id); 
+                                    setCalendarOpenId(null); 
+                                    setCalMonth(new Date(t.date)); 
+                                }}
+                                onCollapse={() => setExpandedId(null)}
+                                onUpdate={(u) => setTransactions(prev => prev.map(item => item.id === t.id ? u : item))}
+                                onDelete={() => setDeleteId(t.id)}
+                                onCalendarToggle={() => setCalendarOpenId(calendarOpenId === t.id ? null : t.id)}
+                                setCalMonth={setCalMonth}
+                            />
+                          ))}
+                      </div>
+                  )}
+              </div>
+              {dayTransactions.length === 0 && <button onClick={goToLatestTransaction} className="absolute bottom-24 left-1/2 -translate-x-1/2 px-4 py-2 bg-gray-800 dark:bg-white text-white dark:text-gray-900 rounded-full shadow-lg text-xs font-bold flex items-center gap-2 opacity-80 hover:opacity-100 transition-opacity z-50"><ArrowUp className="w-3 h-3" /> 최근 내역</button>}
+          </div>
+      )}
+      <button className="fixed bottom-20 right-6 w-14 h-14 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg active:scale-95 z-[60] hover:bg-blue-700 transition-colors" onClick={(e) => { const rect = (e.currentTarget as HTMLElement).getBoundingClientRect(); const newT: Transaction = { id: Math.random().toString(36).substr(2, 9), date: format(currentDate, 'yyyy-MM-dd'), title: '', amount: 0, type: 'expense' }; if (viewMode === 'day') { setTransactions(prev => [...prev, newT]); setExpandedId(newT.id); } else { setPopover({ item: newT, rect }); } }}><Plus className="w-8 h-8" /></button>
+      {popover && <LedgerPopover item={transactions.find(t => t.id === popover.item.id) || popover.item} targetRect={popover.rect} onClose={() => setPopover(null)} onUpdate={(u) => setTransactions(prev => prev.some(t => t.id === u.id) ? prev.map(t => t.id === u.id ? u : t) : [...prev, u])} onDelete={(id) => setDeleteId(id)} />}
+      <ConfirmModal isOpen={!!deleteId} message="이 내역을 영구적으로 삭제하시겠습니까?" onConfirm={handleDelete} onCancel={() => setDeleteId(null)} />
+    </div>
+  );
 }
