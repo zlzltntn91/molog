@@ -23,35 +23,24 @@ interface LedgerPopoverProps {
 }
 
 const PopoverArrow = ({ direction, style }: { direction: 'top' | 'bottom', style: React.CSSProperties }) => (
-    <div style={{ ...style, width: 20, height: 10, position: 'absolute', pointerEvents: 'none', zIndex: 101 }}>
-        <svg width="20" height="10" viewBox="0 0 20 10" fill="none">
-            <path d={direction === 'top' ? "M 0 10 L 10 0 L 20 10" : "M 0 0 L 10 10 L 20 0"} className="fill-white dark:fill-[#2c2c2e]" />
-            <path d={direction === 'top' ? "M 0 10 L 10 0 L 20 10" : "M 0 0 L 10 10 L 20 0"} className="stroke-theme fill-none" strokeWidth="1" />
-        </svg>
-        {/* Border overlay to hide the bottom border of the arrow where it meets the popover */}
-        <div style={{ 
-            position: 'absolute', 
-            top: direction === 'top' ? 9 : -1, 
-            left: 0, 
-            width: '100%', 
-            height: 2, 
-            backgroundColor: 'inherit' // This won't work easily with border logic, simplifying:
-        }} />
+    <div style={{ ...style, width: 20, height: 10, position: 'absolute', pointerEvents: 'none', zIndex: 101, overflow: 'hidden' }}>
+        <div 
+            style={{
+                width: 14,
+                height: 14,
+                transform: 'rotate(45deg)',
+                position: 'absolute',
+                left: 3, // Center horizontally ((20 - 14) / 2 approx)
+                top: direction === 'top' ? 4 : -8, // Adjust vertical position to make tip protrude correctly
+            }}
+            className={`
+                bg-white dark:bg-[#2c2c2e]
+                border-gray-100 dark:border-[#2c2c2e]
+                ${direction === 'top' ? 'border-t border-l' : 'border-b border-r'}
+            `}
+        />
     </div>
 );
-
-// Helper to cover the border line where arrow joins
-const PopoverArrowCover = ({ direction, style }: { direction: 'top' | 'bottom', style: React.CSSProperties }) => (
-    <div style={{ 
-        ...style, 
-        width: 18, 
-        height: 2, 
-        position: 'absolute', 
-        zIndex: 102,
-        background: 'var(--bg-popover, #fff)', // Should match popover bg
-    }} className="bg-white dark:bg-[#2c2c2e]" />
-);
-
 
 export default function LedgerPopover({ item, targetRect, onClose, onUpdate, onDelete }: LedgerPopoverProps) {
     if (!item) return null;
@@ -220,6 +209,10 @@ export default function LedgerPopover({ item, targetRect, onClose, onUpdate, onD
                           updateField('amount', num);
                       }}
                       onEnter={onClose}
+                      processInput={(val) => {
+                          const numStr = val.replace(/[^0-9]/g, '');
+                          return numStr ? Number(numStr).toLocaleString() : '';
+                      }}
                       onClick={(e) => e.stopPropagation()}
                       inputMode="numeric"
                       pattern="[0-9]*"

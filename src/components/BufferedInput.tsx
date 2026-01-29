@@ -4,9 +4,10 @@ interface BufferedInputProps extends React.InputHTMLAttributes<HTMLInputElement>
   value: string | number;
   onValueChange: (val: string) => void;
   onEnter?: () => void;
+  processInput?: (val: string) => string;
 }
 
-export default function BufferedInput({ value, onValueChange, onEnter, ...props }: BufferedInputProps) {
+export default function BufferedInput({ value, onValueChange, onEnter, processInput, ...props }: BufferedInputProps) {
   const [localValue, setLocalValue] = useState<string | number>(value);
 
   useEffect(() => {
@@ -23,7 +24,10 @@ export default function BufferedInput({ value, onValueChange, onEnter, ...props 
     <input
       {...props}
       value={localValue}
-      onChange={(e) => setLocalValue(e.target.value)}
+      onChange={(e) => {
+          const nextVal = processInput ? processInput(e.target.value) : e.target.value;
+          setLocalValue(nextVal);
+      }}
       onBlur={handleBlur}
       onKeyDown={(e) => {
         if (e.key === 'Enter') {

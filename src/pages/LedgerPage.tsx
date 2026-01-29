@@ -20,7 +20,7 @@ interface Transaction {
 
 export default function LedgerPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const viewMode = (searchParams.get('view') as 'month' | 'day') || 'month';
+  const viewMode = (searchParams.get('view') as 'month' | 'day') || 'day';
   const [currentDate, setCurrentDate] = useState(new Date());
   
   const generateDummyData = (): Transaction[] => {
@@ -52,6 +52,21 @@ export default function LedgerPage() {
   const [calMonth, setCalMonth] = useState(new Date());
   const [isHighlighting, setIsHighlighting] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [pendingUpdateId, setPendingUpdateId] = useState<string | null>(null);
+
+  useEffect(() => {
+      if (pendingUpdateId) {
+          const timer = setTimeout(() => {
+              const element = document.getElementById(`ledger-item-${pendingUpdateId}`);
+              if (element) {
+                  const newRect = element.getBoundingClientRect();
+                  setPopover(prev => prev ? { ...prev, rect: newRect } : null);
+                  setPendingUpdateId(null);
+              }
+          }, 100);
+          return () => clearTimeout(timer);
+      }
+  }, [pendingUpdateId, currentDate, transactions, viewMode]);
 
   // 항목 확장 시 중앙으로 자동 스크롤
   useEffect(() => {
@@ -140,6 +155,10 @@ export default function LedgerPage() {
   const dayIncome = dayTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
   const dayExpense = dayTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
 
+  const monthTransactions = transactions.filter(t => isSameMonth(new Date(t.date), currentDate));
+  const monthIncome = monthTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+  const monthExpense = monthTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+
   return (
     <div className="w-full h-full flex flex-col bg-white dark:bg-[#1c1c1e]">
       <header className="flex items-center justify-between p-4 border-b border-theme bg-white/80 dark:bg-[#1c1c1e]/80 backdrop-blur-md sticky top-0 z-20 h-16">
@@ -161,6 +180,11 @@ export default function LedgerPage() {
 
       {viewMode === 'month' ? (
         <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+            <div className="px-6 py-4 flex justify-between items-center border-b border-theme bg-gray-50/50 dark:bg-black/20">
+                <div className="flex flex-col"><span className="text-xs text-gray-500 mb-1">수입</span><span className="text-lg font-bold text-green-600">+{monthIncome.toLocaleString()}</span></div>
+                <div className="h-8 w-px bg-gray-200 dark:bg-white/10 mx-4"></div>
+                <div className="flex flex-col text-right"><span className="text-xs text-gray-500 mb-1">지출</span><span className="text-lg font-bold text-red-500">-{monthExpense.toLocaleString()}</span></div>
+            </div>
             <div className="grid grid-cols-7 border-b border-theme bg-gray-50 dark:bg-[#1c1c1e]">
               {['일', '월', '화', '수', '목', '금', '토'].map((day, i) => (
                 <div key={day} className={`text-center py-2 text-xs font-bold ${i === 0 ? 'text-red-500' : i === 6 ? 'text-blue-500' : 'text-gray-500'}`}>{day}</div>
@@ -187,6 +211,12 @@ export default function LedgerPage() {
         </DndContext>
       ) : (
           <div className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-[#1c1c1e] relative">
+              <div className="px-6 py-4 flex justify-between items-center border-b border-theme bg-gray-50/50 dark:bg-black/20">
+                  <div className="flex flex-col"><span className="text-xs text-gray-500 mb-1">수입</span><span className="text-lg font-bold text-green-600">+{dayIncome.toLocaleString()}</span></div>
+                  <div className="h-8 w-px bg-gray-200 dark:bg-white/10 mx-4"></div>
+                  <div className="flex flex-col text-right"><span className="text-xs text-gray-500 mb-1">지출</span><span className="text-lg font-bold text-red-500">-{dayExpense.toLocaleString()}</span></div>
+              </div>
+
               <div className="flex justify-between items-center px-4 py-3 border-b border-theme bg-white dark:bg-[#1c1c1e]">
                   {weekDays.map((d, i) => {
                       const isSelected = isSameDay(d, currentDate);
@@ -200,12 +230,6 @@ export default function LedgerPage() {
                           </button>
                       )
                   })}
-              </div>
-
-              <div className="px-6 py-4 flex justify-between items-center border-b border-theme bg-gray-50/50 dark:bg-black/20">
-                  <div className="flex flex-col"><span className="text-xs text-gray-500 mb-1">수입</span><span className="text-lg font-bold text-green-600">+{dayIncome.toLocaleString()}</span></div>
-                  <div className="h-8 w-px bg-gray-200 dark:bg-white/10 mx-4"></div>
-                  <div className="flex flex-col text-right"><span className="text-xs text-gray-500 mb-1">지출</span><span className="text-lg font-bold text-red-500">-{dayExpense.toLocaleString()}</span></div>
               </div>
 
               <div className="flex-1 overflow-y-auto p-4 pb-20">
@@ -239,7 +263,19 @@ export default function LedgerPage() {
           </div>
       )}
       <button className="fixed bottom-20 right-6 w-14 h-14 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg active:scale-95 z-[60] hover:bg-blue-700 transition-colors" onClick={(e) => { const rect = (e.currentTarget as HTMLElement).getBoundingClientRect(); const newT: Transaction = { id: Math.random().toString(36).substr(2, 9), date: format(currentDate, 'yyyy-MM-dd'), title: '', amount: 0, type: 'expense' }; if (viewMode === 'day') { setTransactions(prev => [...prev, newT]); setExpandedId(newT.id); } else { setPopover({ item: newT, rect }); } }}><Plus className="w-8 h-8" /></button>
-      {popover && <LedgerPopover item={transactions.find(t => t.id === popover.item.id) || popover.item} targetRect={popover.rect} onClose={() => setPopover(null)} onUpdate={(u) => setTransactions(prev => prev.some(t => t.id === u.id) ? prev.map(t => t.id === u.id ? u : t) : [...prev, u])} onDelete={(id) => setDeleteId(id)} />}
+      {popover && <LedgerPopover 
+        item={transactions.find(t => t.id === popover.item.id) || popover.item} 
+        targetRect={popover.rect} 
+        onClose={() => setPopover(null)} 
+        onUpdate={(u) => {
+            setTransactions(prev => prev.some(t => t.id === u.id) ? prev.map(t => t.id === u.id ? u : t) : [...prev, u]);
+            if (!isSameMonth(new Date(u.date), currentDate)) {
+                setCurrentDate(new Date(u.date));
+            }
+            setPendingUpdateId(u.id);
+        }} 
+        onDelete={(id) => setDeleteId(id)} 
+      />}
       <ConfirmModal isOpen={!!deleteId} message="이 내역을 영구적으로 삭제하시겠습니까?" onConfirm={handleDelete} onCancel={() => setDeleteId(null)} />
     </div>
   );

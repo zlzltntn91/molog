@@ -71,11 +71,11 @@ export default function LedgerCard({ t, isExpanded, isCalOpen, calMonth, onExpan
                         {t.type === 'income' ? <Plus className="w-5 h-5" /> : <Minus className="w-5 h-5" />}
                     </div>
                     <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-gray-900 dark:text-white text-base mb-0.5 truncate">{t.title || '내역 없음'}</h3>
+                        <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-0.5 overflow-hidden whitespace-nowrap">{t.title || '내역 없음'}</h3>
                         <p className="text-xs text-gray-400">{t.type === 'income' ? '수입' : '지출'}</p>
                     </div>
                     <span className={`font-bold text-lg ${t.type === 'income' ? 'text-green-600' : 'text-red-500'}`}>
-                        {t.type === 'income' ? '+' : '-'}{t.amount.toLocaleString()}
+                        {t.type === 'income' ? '+ ' : '- '}{t.amount.toLocaleString()}
                     </span>
                     <ChevronRight className="w-5 h-5 text-gray-400 ml-2 transition-transform duration-300" />
                 </div>

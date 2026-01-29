@@ -38,6 +38,7 @@ export default function LedgerItem({ t, isOverlay, onClick }: LedgerItemProps) {
   return (
     <div 
       ref={setNodeRef} 
+      id={`ledger-item-${t.id}`}
       style={style} 
       {...listeners} 
       {...attributes}
@@ -45,10 +46,10 @@ export default function LedgerItem({ t, isOverlay, onClick }: LedgerItemProps) {
         e.stopPropagation();
         if (!isDragging && onClick) onClick(e, t);
       }}
-      className={`w-full flex items-center px-1.5 py-1 rounded-md shadow-sm truncate mb-1 cursor-pointer hover:brightness-95 relative z-10 ${colorClasses} ${isOverlay ? 'scale-105 ring-2 ring-blue-500 !z-50' : ''}`}
+      className={`w-full flex shrink-0 items-center px-1.5 py-1 rounded-md shadow-sm mb-1 cursor-pointer hover:brightness-95 relative z-10 ${colorClasses} ${isOverlay ? 'scale-105 ring-2 ring-blue-500 !z-50' : ''}`}
     >
-      <span className="text-xs md:text-sm font-bold truncate flex-1">{t.title}</span>
-      <span className="hidden xl:block text-[10px] ml-1 font-medium opacity-80 whitespace-nowrap">
+      <span className="text-[10px] md:text-[11px] font-bold flex-1 overflow-hidden whitespace-nowrap">{t.title}</span>
+      <span className="hidden xl:block text-[9px] ml-1 font-medium opacity-80 whitespace-nowrap">
         {t.amount.toLocaleString()}
       </span>
     </div>
